@@ -27,8 +27,8 @@ A powerful command-line interface for creating custom Zwift workouts with an int
 ### Installation
 
 ```bash
-git clone https://github.com/yourusername/zwerminal-cli.git
-cd zwerminal-cli
+git clone https://github.com/trumanyardley/zwerminal.git
+cd zwerminal
 pip install rich
 ```
 
@@ -129,7 +129,7 @@ The workout timeline uses color-coding for easy visualization:
 ## 📁 File Structure
 
 ```
-zwerminal-cli/
+zwerminal/
 ├── main.py              # Main CLI application
 ├── workout.py           # Workout class and ZWO export logic
 ├── workouts/            # Generated .zwo files (created automatically)
