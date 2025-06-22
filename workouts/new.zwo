@@ -1,0 +1,17 @@
+<workout_file>
+    <name>run</name>
+    <description></description>
+    <sportType>bike</sportType>
+    <tags/>
+    <workout>
+        <SteadyState Duration="300s" Power="0.65" />
+    <Ramp Duration="300" PowerStart="0.5" PowerEnd="1.0" />
+    <Ramp Duration="300" PowerStart="1.0" PowerEnd="0.5" />
+    <IntervalsT Repeat="8">
+      <SteadyState Duration="60" Power="0.4" />
+      <SteadyState Duration="120" Power="1.0" />
+    </IntervalsT>
+    <Ramp Duration="300" PowerStart="0.5" PowerEnd="1.0" />
+    <Ramp Duration="300" PowerStart="1.0" PowerEnd="0.5" />
+  </workout>
+</workout_file>
