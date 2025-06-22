@@ -4,10 +4,13 @@ from rich.table import Table
 from rich.prompt import Prompt
 import re
 import os
+import readline
 
 console = Console()
 workout = Workout()
 
+# keep command history for arrow key use
+readline.set_history_length(1000)
 
 def display_timeline():
     if not workout.blocks:
@@ -95,6 +98,12 @@ def display_timeline():
         f"[bold]TSS:[/] {tss_val}"
     )
 
+def refresh_screen():
+    """
+    Clear terminal & redraw timeline + summary.
+    """
+    console.clear()
+    display_timeline()
 
 def parse_duration_to_seconds(duration_str):
     """Parse duration string to seconds"""
@@ -276,7 +285,6 @@ def repl():
                 workout.ftp = ftp_value
                 update_auto_powers()
                 console.print(f"✅ FTP set to [bold]{workout.ftp}W[/]")
-                display_timeline()
 
             elif command == "add" and args:
                 sub = args[0].lower()
@@ -298,7 +306,7 @@ def repl():
                         console.print("[red]Starting power cannot be less than or equal to end power[/]")
                         continue
                     workout.add_block(sub, power_start=p0, power_end=p1, duration=dur)
-                    display_timeline()
+                    refresh_screen()
 
                 # 2) Interval: add interval p1 t1 p2 t2 reps
                 elif sub == "interval" and len(args) == 6:
@@ -316,7 +324,7 @@ def repl():
                                       power1=p1, dur1=t1,
                                       power2=p2, dur2=t2,
                                       reps=reps)
-                    display_timeline()
+                    refresh_screen()
 
                 # 3) `add Zx time` or `add time power`
                 elif len(args) == 2:
@@ -334,7 +342,7 @@ def repl():
                             power = workout._zone_to_power(zone)
                             if power is not None:
                                 workout.add_block("steady", zone=zone.upper(), duration=duration, power=power)
-                                display_timeline()
+                                refresh_screen()
                             else:
                                 console.print("[red]Could not calculate power for zone.[/]")
                         else:
@@ -351,7 +359,7 @@ def repl():
                         duration = f"{duration_s}s"
                         workout.add_block("steady", zone="AUTO", duration=duration, power=power)
                         update_auto_powers()
-                        display_timeline()
+                        refresh_screen()
                 else:
                     console.print("[red]Invalid 'add' usage. See 'help'.[/]")
 
@@ -374,7 +382,7 @@ def repl():
                     console.print("[red]Nothing to paste. Use copy first.[/]")
                     continue
                 workout.blocks.extend([block.copy() for block in workout.clipboard])
-                display_timeline()
+                refresh_screen()
 
             elif command == "edit" and len(args) >= 1:
                 if not workout.blocks:
@@ -428,7 +436,7 @@ def repl():
                 elif "power" in kwargs and workout.ftp is not None:
                     workout.blocks[index]["zone"] = workout._power_to_zone(workout.blocks[index]["power"])
 
-                display_timeline()
+                refresh_screen()
 
             elif command == "delete" and len(args) == 1:
                 if not workout.blocks:
@@ -439,10 +447,10 @@ def repl():
                     continue
                 workout.delete_block(index)
                 console.print(f"✅ Deleted block {index}")
-                display_timeline()
+                refresh_screen()
 
             elif command == "preview":
-                display_timeline()
+                refresh_screen()
 
             elif command == "export" and len(args) >= 1:
                 if not workout.blocks:
