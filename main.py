@@ -21,16 +21,6 @@ def display_timeline():
     table.add_column("Duration")
     table.add_column("Power")
 
-    # Map zones to colors
-    color_map = {
-        "Z1": "grey",
-        "Z2": "blue",
-        "Z3": "green",
-        "Z4": "yellow",
-        "Z5": "orange1",
-        "Z6": "red"
-    }
-
     for i, b in enumerate(workout.blocks):
         try:
             btype = b.get("type", "steady")
@@ -44,7 +34,7 @@ def display_timeline():
                     zone = power_to_zone(power)
                 dur_s = parse_duration_to_seconds(b.get("duration", "0s"))
                 dur = f"{dur_s//60}:{str(dur_s%60).zfill(2)}"
-                color = color_map.get(zone.upper(), "white")
+                color = workout._zone_color(zone)
                 info = f"[{color}]{zone}[/{color}]"
 
             # --- ramp blocks (warmup/cooldown) ---
