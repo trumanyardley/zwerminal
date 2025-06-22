@@ -7,134 +7,301 @@ from rich.text import Text
 class Workout:
     def __init__(self):
         self.blocks = []  # list of block‐dicts
-        self.clipboard = None      # for copy/paste
+        self.clipboard = []  # Initialize as empty list instead of None
         self.ftp = None  
-
 
     def add_block(self, block_type, **params):
         """
+        Add a workout block 
         block_type: "steady", "warmup", "cooldown", or "interval"
         steady expects:   zone, duration, power
         warmup/cooldown: power_start, power_end, duration (in seconds)
         interval:        power1, dur1, power2, dur2, reps
         """
+        if not block_type or block_type not in ["steady", "warmup", "cooldown", "interval"]:
+            raise ValueError(f"Invalid block type: {block_type}")
+            
         blk = {"type": block_type}
-        if block_type == "steady":
-            blk["zone"]     = params["zone"].upper()
-            blk["duration"] = params["duration"]
-            blk["power"]    = params["power"]
-        elif block_type in ("warmup","cooldown"):
-            blk["power_start"] = params["power_start"]
-            blk["power_end"]   = params["power_end"]
-            blk["duration"]    = params["duration"]
-        elif block_type == "interval":
-            blk["power1"] = params["power1"]
-            blk["dur1"]   = params["dur1"]
-            blk["power2"] = params["power2"]
-            blk["dur2"]   = params["dur2"]
-            blk["reps"]   = params["reps"]
-        else:
-            raise ValueError(f"Unknown block type: {block_type}")
+        
+        try:
+            if block_type == "steady":
+                blk["zone"] = str(params.get("zone", "Z1")).upper()
+                blk["duration"] = str(params.get("duration", "0s"))
+                blk["power"] = int(params.get("power", 0))
+                
+            elif block_type in ("warmup", "cooldown"):
+                blk["power_start"] = int(params.get("power_start", 0))
+                blk["power_end"] = int(params.get("power_end", 0))
+                blk["duration"] = int(params.get("duration", 0))
+                
+            elif block_type == "interval":
+                blk["power1"] = int(params.get("power1", 0))
+                blk["dur1"] = int(params.get("dur1", 0))  
+                blk["power2"] = int(params.get("power2", 0))
+                blk["dur2"] = int(params.get("dur2", 0))
+                blk["reps"] = int(params.get("reps", 1))
+                
+        except (ValueError, TypeError) as e:
+            raise ValueError(f"Invalid parameters for {block_type} block: {e}")
+            
         self.blocks.append(blk)
 
     def edit_block(self, index, zone=None, duration=None, power=None):
+        """Edit a block"""
+        if not (0 <= index < len(self.blocks)):
+            raise IndexError(f"Block index {index} out of range")
+            
         block = self.blocks[index]
-        if zone: block["zone"] = zone.upper()
-        if duration: block["duration"] = duration
-        if power: block["power"] = power
+        
+        try:
+            if zone is not None:
+                if zone.upper() not in ["Z1", "Z2", "Z3", "Z4", "Z5", "Z6", "AUTO"]:
+                    raise ValueError(f"Invalid zone: {zone}")
+                block["zone"] = zone.upper()
+                
+            if duration is not None:
+                # Validate duration format
+                if isinstance(duration, str) and duration.endswith('s'):
+                    dur_seconds = int(duration[:-1])
+                    if dur_seconds <= 0:
+                        raise ValueError("Duration must be positive")
+                block["duration"] = duration
+                
+            if power is not None:
+                power_val = int(power)
+                if power_val < 0:
+                    raise ValueError("Power cannot be negative")
+                block["power"] = power_val
+                
+        except (ValueError, TypeError) as e:
+            raise ValueError(f"Invalid edit parameters: {e}")
 
     def delete_block(self, index):
+        """Delete a block"""
+        if not (0 <= index < len(self.blocks)):
+            raise IndexError(f"Block index {index} out of range")
         self.blocks.pop(index)
 
     def display(self, console: Console):
-        table = Table(title="🏁 Zwift Workout Timeline")
+        """Display workout"""
+        if not self.blocks:
+            console.print("[yellow]No workout blocks yet![/]")
+            return
+            
+        table = Table(title="🏁 Workout Timeline")
         table.add_column("Index")
         table.add_column("Zone")
         table.add_column("Duration")
         table.add_column("Power (W)")
+        
         for i, b in enumerate(self.blocks):
-            color = self._zone_color(b["zone"])
-            table.add_row(str(i), f"[{color}]{b['zone']}[/{color}]", b["duration"], str(b["power"]))
+            try:
+                zone = b.get("zone", "Z1")
+                duration = b.get("duration", "0s")
+                power = b.get("power", 0)
+                color = self._zone_color(zone)
+                table.add_row(str(i), f"[{color}]{zone}[/{color}]", str(duration), str(power))
+            except Exception as e:
+                table.add_row(str(i), "ERROR", str(e), "0")
+                
         console.print(table)
 
     def export(self, filepath, name="Custom Workout"):
-        os.makedirs(os.path.dirname(filepath), exist_ok=True)
-        with open(filepath, "w") as f:
-            f.write(self.to_zwo(name=name))
-
+        """Export"""
+        if not self.blocks:
+            raise ValueError("Cannot export empty workout")
+            
+        if self.ftp is None or self.ftp <= 0:
+            raise ValueError("FTP must be set before exporting")
+            
+        try:
+            # Ensure directory exists
+            dir_path = os.path.dirname(filepath)
+            if dir_path:
+                os.makedirs(dir_path, exist_ok=True)
+                
+            with open(filepath, "w", encoding='utf-8') as f:
+                f.write(self.to_zwo(name=name))
+        except (OSError, IOError) as e:
+            raise IOError(f"Failed to write file {filepath}: {e}")
 
     def to_zwo(self, name="Custom Workout"):
+        """Generate ZWO"""
+        if self.ftp is None or self.ftp <= 0:
+            raise ValueError("FTP must be set to generate ZWO file")
+            
         def to_sec(d):
-            # if stored as int, just return it; else strip non-digits
-            return d if isinstance(d, int) else int(re.sub(r"[^\d]", "", d))
+            """Convert duration to seconds with validation"""
+            if isinstance(d, int):
+                return max(0, d)  # Ensure non-negative
+            if isinstance(d, str):
+                # Strip 's' suffix and convert
+                duration_str = d.rstrip('s')
+                try:
+                    return max(0, int(duration_str))
+                except ValueError:
+                    return 0
+            return 0
 
         def ratio(p):
-            return round(p / self.ftp, 8) if (self.ftp and self.ftp > 0) else 0
+            """Convert power to FTP ratio with validation"""
+            try:
+                power_val = float(p)
+                if power_val < 0:
+                    power_val = 0
+                return round(power_val / self.ftp, 6)
+            except (ValueError, TypeError, ZeroDivisionError):
+                return 0.0
 
         lines = []
+        lines.append('<?xml version="1.0" encoding="UTF-8"?>')
         lines.append("<workout_file>")
-        lines.append(f"  <name>{name}</name>")
+        lines.append(f"  <name>{self._escape_xml(name)}</name>")
         lines.append("  <description></description>")
         lines.append("  <sportType>bike</sportType>")
         lines.append("  <tags/>")
         lines.append("  <workout>")
 
-        for b in self.blocks:
-            btype = b.get("type", "steady")
+        for i, b in enumerate(self.blocks):
+            try:
+                btype = b.get("type", "steady")
 
-            if btype == "steady":
-                dur = to_sec(b["duration"])
-                p_ratio = ratio(b["power"])
-                lines.append(
-                    f'    <SteadyState Duration="{dur}" Power="{p_ratio}" pace="0"/>'
-                )
+                if btype == "steady":
+                    dur = to_sec(b.get("duration", 0))
+                    if dur <= 0:
+                        continue  # Skip invalid blocks
+                    p_ratio = ratio(b.get("power", 0))
+                    lines.append(
+                        f'    <SteadyState Duration="{dur}" Power="{p_ratio}" pace="0"/>'
+                    )
 
-            elif btype == "warmup":
-                dur = to_sec(b["duration"])
-                low = ratio(b["power_start"])
-                high = ratio(b["power_end"])
-                lines.append(
-                    f'    <Warmup Duration="{dur}" PowerLow="{low}" PowerHigh="{high}" pace="0"/>'
-                )
+                elif btype == "warmup":
+                    dur = to_sec(b.get("duration", 0))
+                    if dur <= 0:
+                        continue
+                    low = ratio(b.get("power_start", 0))
+                    high = ratio(b.get("power_end", 0))
+                    lines.append(
+                        f'    <Warmup Duration="{dur}" PowerLow="{low}" PowerHigh="{high}" pace="0"/>'
+                    )
 
-            elif btype == "cooldown":
-                dur = to_sec(b["duration"])
-                low = ratio(b["power_start"])
-                high = ratio(b["power_end"])
-                lines.append(
-                    f'    <Cooldown Duration="{dur}" PowerLow="{low}" PowerHigh="{high}" pace="0"/>'
-                )
+                elif btype == "cooldown":
+                    dur = to_sec(b.get("duration", 0))
+                    if dur <= 0:
+                        continue
+                    high = ratio(b.get("power_start", 0))  # Note: reversed for cooldown
+                    low = ratio(b.get("power_end", 0))
+                    lines.append(
+                        f'    <Cooldown Duration="{dur}" PowerLow="{low}" PowerHigh="{high}" pace="0"/>'
+                    )
 
-            elif btype == "interval":
-                reps = b["reps"]
-                on_d = to_sec(b["dur1"])
-                off_d = to_sec(b["dur2"])
-                on_p = ratio(b["power1"])
-                off_p = ratio(b["power2"])
-                lines.append(
-                    f'    <IntervalsT Repeat="{reps}" OnDuration="{on_d}" OffDuration="{off_d}" '
-                    f'OnPower="{on_p}" OffPower="{off_p}" pace="0"/>'
-                )
+                elif btype == "interval":
+                    reps = max(1, b.get("reps", 1))
+                    on_d = to_sec(b.get("dur1", 0))
+                    off_d = to_sec(b.get("dur2", 0))
+                    if on_d <= 0 or off_d <= 0:
+                        continue  # Skip invalid intervals
+                    on_p = ratio(b.get("power1", 0))
+                    off_p = ratio(b.get("power2", 0))
+                    lines.append(
+                        f'    <IntervalsT Repeat="{reps}" OnDuration="{on_d}" OffDuration="{off_d}" '
+                        f'OnPower="{on_p}" OffPower="{off_p}" pace="0"/>'
+                    )
 
-            else:
-                # unknown type; skip or raise
+            except Exception as e:
+                # Log the error but continue processing other blocks
+                print(f"Warning: Skipping block {i} due to error: {e}")
                 continue
 
         lines.append("  </workout>")
         lines.append("</workout_file>")
         return "\n".join(lines)
 
+    def _escape_xml(self, text):
+        """Escape XML special characters"""
+        if not isinstance(text, str):
+            text = str(text)
+        return (text.replace("&", "&amp;")
+                   .replace("<", "&lt;")
+                   .replace(">", "&gt;")
+                   .replace('"', "&quot;")
+                   .replace("'", "&#39;"))
+
     def _zone_color(self, zone):
-        return {
-            "Z1": "green",
-            "Z2": "yellow",
-            "Z3": "orange1",
-            "Z4": "red",
-            "Z5": "magenta",
-            "Z6": "blue"
-        }.get(zone.upper(), "white")
+        """Get color for zone with fallback"""
+        color_map = {
+            "Z1": "grey",
+            "Z2": "blue", 
+            "Z3": "green",
+            "Z4": "yellow",
+            "Z5": "orange1",
+            "Z6": "red",
+            "AUTO": "white"
+        }
+        return color_map.get(str(zone).upper(), "white")
 
     def _minutes_to_seconds(self, dur_str):
-        if "min" in dur_str:
-            return int(dur_str.replace("min", "")) * 60
-        return int(dur_str)  # assume seconds if no "min"
+        """Convert duration string to seconds (deprecated, kept for compatibility)"""
+        try:
+            if "min" in str(dur_str):
+                return int(str(dur_str).replace("min", "")) * 60
+            return int(dur_str)  # assume seconds if no "min"
+        except (ValueError, TypeError):
+            return 0
+
+    def validate_workout(self):
+        """Validate the entire workout for common issues"""
+        issues = []
+        
+        if not self.blocks:
+            issues.append("Workout is empty")
+            
+        if self.ftp is None:
+            issues.append("FTP not set")
+        elif self.ftp <= 0:
+            issues.append(f"Invalid FTP: {self.ftp}")
+            
+        total_duration = 0
+        for i, block in enumerate(self.blocks):
+            try:
+                btype = block.get("type")
+                if btype == "steady":
+                    dur_str = block.get("duration", "0s")
+                    if isinstance(dur_str, str) and dur_str.endswith('s'):
+                        dur = int(dur_str[:-1])
+                    elif isinstance(dur_str, int):
+                        dur = dur_str
+                    else:
+                        dur = 0
+                    total_duration += dur
+                    
+                    if dur <= 0:
+                        issues.append(f"Block {i}: Invalid duration")
+                    if block.get("power", 0) < 0:
+                        issues.append(f"Block {i}: Negative power")
+                        
+                elif btype in ("warmup", "cooldown"):
+                    dur = block.get("duration", 0)
+                    total_duration += dur
+                    if dur <= 0:
+                        issues.append(f"Block {i}: Invalid duration")
+                        
+                elif btype == "interval":
+                    dur1 = block.get("dur1", 0)
+                    dur2 = block.get("dur2", 0) 
+                    reps = block.get("reps", 1)
+                    total_duration += (dur1 + dur2) * reps
+                    
+                    if dur1 <= 0 or dur2 <= 0:
+                        issues.append(f"Block {i}: Invalid interval durations")
+                    if reps <= 0:
+                        issues.append(f"Block {i}: Invalid rep count")
+                        
+            except Exception as e:
+                issues.append(f"Block {i}: Validation error - {e}")
+                
+        # Check for reasonable workout length (5 min to 10 hours)
+        if total_duration < 300:  # 5 minutes
+            issues.append("Workout seems very short (< 5 minutes)")
+        elif total_duration > 36000:  # 10 hours
+            issues.append("Workout seems very long (> 10 hours)")
