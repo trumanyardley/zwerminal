@@ -73,6 +73,28 @@ def display_timeline():
 
     console.print(table)
 
+    # ---- summary bar ----
+    total_s = workout.total_seconds()
+    hours   = total_s // 3600
+    mins    = (total_s % 3600) // 60
+    secs    = total_s % 60
+    hhmmss  = f"{hours:02}:{mins:02}:{secs:02}"
+
+    if_val  = (
+        round(
+            sum(workout._block_avg_ratio(b) * workout._block_seconds(b)
+                for b in workout.blocks) / total_s, 2
+        )
+        if total_s and workout.ftp else 0.0
+    )
+    tss_val = workout.estimate_tss()
+
+    console.print(
+        f"\n[bold]Duration:[/] {hhmmss}    "
+        f"[bold]Avg IF:[/] {if_val:.2f}    "
+        f"[bold]TSS:[/] {tss_val}"
+    )
+
 
 def parse_duration_to_seconds(duration_str):
     """Parse duration string to seconds"""

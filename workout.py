@@ -242,9 +242,6 @@ class Workout:
         except (ValueError, TypeError):
             return "Z?"
 
-
-
-
     def _zone_to_power(self, zone):
         """Convert zone to power"""
         if self.ftp is None or self.ftp <= 0:
@@ -262,3 +259,58 @@ class Workout:
             return int(self.ftp * zperc) if zperc is not None else None
         except (ValueError, TypeError):
             return None
+
+    def _block_seconds(self, b: dict) -> int:
+        """Return block duration in seconds for any block type."""
+        t = b.get("duration")
+        if t is not None:
+            return int(t) if isinstance(t, int) else int(re.sub(r"[^\d]", "", str(t)))
+
+        if b["type"] == "interval":
+            # Each rep has dur1 + dur2
+            return (b["dur1"] + b["dur2"]) * b["reps"]
+        return 0  # fallback
+
+
+    def _block_avg_ratio(self, b: dict) -> float:
+        """Return average FTP ratio (IF) for the block."""
+        if not self.ftp:
+            return 0.0
+
+        if b["type"] == "steady":
+            return b["power"] / self.ftp
+
+        if b["type"] in ("warmup", "cooldown"):
+            return (b["power_start"] + b["power_end"]) / 2 / self.ftp
+
+        if b["type"] == "interval":
+            on = b["power1"] / self.ftp
+            off = b["power2"] / self.ftp
+            total = (b["dur1"] + b["dur2"])
+            return (on * b["dur1"] + off * b["dur2"]) / total
+
+        return 0.0
+
+
+    def total_seconds(self) -> int:
+        """Sum of all block durations."""
+        return sum(self._block_seconds(b) for b in self.blocks)
+
+
+    def estimate_tss(self) -> float:
+        """
+        Approx Training Stress Score using:
+            TSS = (sec * IF^2) / 36
+        where IF is duration-weighted average Intensity Factor.
+        """
+        sec = self.total_seconds()
+        if sec == 0 or not self.ftp:
+            return 0.0
+
+        # duration-weighted IF
+        total_if_x_sec = sum(
+            self._block_avg_ratio(b) ** 2 * self._block_seconds(b)
+            for b in self.blocks
+        )
+        tss = total_if_x_sec / (36 * 1.0)  # 36 = 3600 sec / 100
+        return round(tss, 1)
