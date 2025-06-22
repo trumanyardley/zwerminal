@@ -325,6 +325,12 @@ def repl():
                     if dur == 0:
                         console.print("[red]Duration must be greater than 0[/]")
                         continue
+                    if p0 >= p1 and sub == "warmup":
+                        console.print("[red]Starting power cannot be greater than or equal to end power[/]")
+                        continue
+                    if p0 <= p1 and sub == "cooldown":
+                        console.print("[red]Starting power cannot be less than or equal to end power[/]")
+                        continue
                     workout.add_block(sub, power_start=p0, power_end=p1, duration=dur)
                     display_timeline()
 
