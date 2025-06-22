@@ -9,7 +9,7 @@ workout = Workout()
 
 
 def display_timeline():
-    table = Table(title="\U0001F3C1 Zwifty Workout Timeline")
+    table = Table(title="\U0001F3C1 Workout Timeline")
     table.add_column("Idx")
     table.add_column("Type")
     table.add_column("Zone/Info")
