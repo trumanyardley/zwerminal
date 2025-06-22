@@ -144,15 +144,51 @@ def repl():
         elif command == "help":
             console.print("""
 [bold cyan]Available Commands:[/]
-  ftp value                        → Set your FTP
-  add Zx time                     → Add workout block using zone and FTP-calculated power
-  add time power                  → Add block and auto-detect zone by FTP
-  edit idx [-zone Zx] [-time t] [-power p] → Edit block (don't mix -zone and -power)
-  delete idx                      → Remove block
-  preview                         → Show timeline
-  export filename.zwo             → Save workout file
-  help                            → Show this message
-  exit                            → Quit
+  ftp <value>
+      Set your FTP in watts. All subsequent blocks use this FTP.
+  
+  add Zx <duration>
+      Add a steady block in zone Zx (Z1–Z6) for given duration 
+      (e.g. 5min, 90s, 1:30). Power is calculated from FTP.
+
+  add <duration> <power>
+      Add a steady block at the given power (watts). Zone is 
+      auto-detected based on FTP.
+
+  add warmup <startW> <endW> <duration>
+      Add a ramp (warmup) from startW to endW over duration.
+
+  add cooldown <startW> <endW> <duration>
+      Add a ramp (cooldown) from startW to endW over duration.
+
+  add interval <p1> <t1> <p2> <t2> <reps>
+      Add an interval block: p1 watts for t1, p2 watts for t2, 
+      repeated reps times.
+
+  copy <start_idx> <end_idx>
+      Copy blocks in the given index range [start_idx..end_idx] 
+      into the clipboard.
+
+  paste
+      Paste the clipboard blocks to the end of the workout.
+
+  edit <idx> [-zone Zx] [-time <duration>] [-power <watts>]
+      Edit block at index. Cannot edit zone and power at the same time.
+
+  delete <idx>
+      Remove the block at the given index.
+
+  preview
+      Display the current workout timeline.
+
+  export <filename.zwo>
+      Save to workouts/<filename>.zwo (prompts for workout name that will be displayed in zwift app).
+
+  help
+      Show this help message.
+
+  exit
+      Quit the app.
 """)
 
         elif command == "ftp" and len(args) == 1:
