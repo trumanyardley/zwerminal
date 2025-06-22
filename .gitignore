@@ -1,0 +1,61 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# C extensions
+*.so
+
+# Distribution / packaging
+build/
+dist/
+*.egg-info/
+.eggs/
+
+# Virtual environments
+env/
+venv/
+.venv/
+ENV/
+
+# Test / coverage
+.coverage
+coverage.xml
+.pytest_cache/
+nosetests.xml
+htmlcov/
+
+# Mypy
+.mypy_cache/
+
+# Logs and local files
+*.log
+*.sqlite3
+
+# Zwift workouts output
+workouts/
+
+# Editor directories and files
+.vscode/
+.idea/
+*.sublime-project
+*.sublime-workspace
+
+# macOS
+.DS_Store
+
+# Windows
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# Environment variables
+.env
+.env.*
+
+# IntelliJ
+out/
+
+# JetBrains
+*.iml
+
