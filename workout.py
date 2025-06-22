@@ -82,30 +82,6 @@ class Workout:
             raise IndexError(f"Block index {index} out of range")
         self.blocks.pop(index)
 
-    def display(self, console: Console):
-        """Display workout"""
-        if not self.blocks:
-            console.print("[yellow]No workout blocks yet![/]")
-            return
-            
-        table = Table(title="🏁 Workout Timeline")
-        table.add_column("Index")
-        table.add_column("Zone")
-        table.add_column("Duration")
-        table.add_column("Power (W)")
-        
-        for i, b in enumerate(self.blocks):
-            try:
-                zone = b.get("zone", "Z1")
-                duration = b.get("duration", "0s")
-                power = b.get("power", 0)
-                color = self._zone_color(zone)
-                table.add_row(str(i), f"[{color}]{zone}[/{color}]", str(duration), str(power))
-            except Exception as e:
-                table.add_row(str(i), "ERROR", str(e), "0")
-                
-        console.print(table)
-
     def export(self, filepath, name="Custom Workout"):
         """Export"""
         if not self.blocks:
@@ -239,69 +215,3 @@ class Workout:
             "AUTO": "white"
         }
         return color_map.get(str(zone).upper(), "white")
-
-    def _minutes_to_seconds(self, dur_str):
-        """Convert duration string to seconds (deprecated, kept for compatibility)"""
-        try:
-            if "min" in str(dur_str):
-                return int(str(dur_str).replace("min", "")) * 60
-            return int(dur_str)  # assume seconds if no "min"
-        except (ValueError, TypeError):
-            return 0
-
-    def validate_workout(self):
-        """Validate the entire workout for common issues"""
-        issues = []
-        
-        if not self.blocks:
-            issues.append("Workout is empty")
-            
-        if self.ftp is None:
-            issues.append("FTP not set")
-        elif self.ftp <= 0:
-            issues.append(f"Invalid FTP: {self.ftp}")
-            
-        total_duration = 0
-        for i, block in enumerate(self.blocks):
-            try:
-                btype = block.get("type")
-                if btype == "steady":
-                    dur_str = block.get("duration", "0s")
-                    if isinstance(dur_str, str) and dur_str.endswith('s'):
-                        dur = int(dur_str[:-1])
-                    elif isinstance(dur_str, int):
-                        dur = dur_str
-                    else:
-                        dur = 0
-                    total_duration += dur
-                    
-                    if dur <= 0:
-                        issues.append(f"Block {i}: Invalid duration")
-                    if block.get("power", 0) < 0:
-                        issues.append(f"Block {i}: Negative power")
-                        
-                elif btype in ("warmup", "cooldown"):
-                    dur = block.get("duration", 0)
-                    total_duration += dur
-                    if dur <= 0:
-                        issues.append(f"Block {i}: Invalid duration")
-                        
-                elif btype == "interval":
-                    dur1 = block.get("dur1", 0)
-                    dur2 = block.get("dur2", 0) 
-                    reps = block.get("reps", 1)
-                    total_duration += (dur1 + dur2) * reps
-                    
-                    if dur1 <= 0 or dur2 <= 0:
-                        issues.append(f"Block {i}: Invalid interval durations")
-                    if reps <= 0:
-                        issues.append(f"Block {i}: Invalid rep count")
-                        
-            except Exception as e:
-                issues.append(f"Block {i}: Validation error - {e}")
-                
-        # Check for reasonable workout length (5 min to 10 hours)
-        if total_duration < 300:  # 5 minutes
-            issues.append("Workout seems very short (< 5 minutes)")
-        elif total_duration > 36000:  # 10 hours
-            issues.append("Workout seems very long (> 10 hours)")
