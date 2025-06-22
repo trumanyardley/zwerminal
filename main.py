@@ -31,7 +31,7 @@ def display_timeline():
                 power = b.get("power", 0)
                 zone = b.get("zone", "Z1")
                 if zone == "AUTO" and workout.ftp is not None:
-                    zone = power_to_zone(power)
+                    zone = workout._power_to_zone(power)
                 dur_s = parse_duration_to_seconds(b.get("duration", "0s"))
                 dur = f"{dur_s//60}:{str(dur_s%60).zfill(2)}"
                 color = workout._zone_color(zone)
@@ -116,52 +116,6 @@ def parse_duration_to_seconds(duration_str):
         console.print(f"[red]Invalid duration format: '{duration_str}'. Using 0 seconds.[/]")
         return 0
 
-
-def power_to_zone(power):
-    """Convert power to zone"""
-    if workout.ftp is None or workout.ftp <= 0:
-        return "Z?"
-    
-    try:
-        power = float(power)
-        if power < 0:
-            return "Z?"
-        pct = (power / workout.ftp) * 100
-        if pct < 60:
-            return "Z1"
-        elif pct < 76:
-            return "Z2"
-        elif pct < 90:
-            return "Z3"
-        elif pct < 105:
-            return "Z4"
-        elif pct < 119:
-            return "Z5"
-        else:
-            return "Z6"
-    except (ValueError, TypeError):
-        return "Z?"
-
-
-def zone_to_power(zone):
-    """Convert zone to power"""
-    if workout.ftp is None or workout.ftp <= 0:
-        return None
-        
-    try:
-        zperc = {
-            "Z1": 0.55,
-            "Z2": 0.65,
-            "Z3": 0.80,
-            "Z4": 0.95,
-            "Z5": 1.10,
-            "Z6": 1.25
-        }.get(zone.upper(), None)
-        return int(workout.ftp * zperc) if zperc is not None else None
-    except (ValueError, TypeError):
-        return None
-
-
 def update_auto_powers():
     """Update auto powers"""
     if not workout.ftp:
@@ -171,12 +125,12 @@ def update_auto_powers():
         try:
             zone = b.get('zone', '')
             if zone in ["Z1", "Z2", "Z3", "Z4", "Z5", "Z6"] and workout.ftp is not None:
-                new_power = zone_to_power(zone)
+                new_power = workout._zone_to_power(zone)
                 if new_power is not None:
                     b['power'] = new_power
             elif zone == "AUTO" and workout.ftp is not None:
                 power = b.get('power', 0)
-                b['zone'] = power_to_zone(power)
+                b['zone'] = workout._power_to_zone(power)
         except Exception as e:
             console.print(f"[red]Error updating power for block: {e}[/]")
 
@@ -355,7 +309,7 @@ def repl():
                             continue
                         duration = f"{duration_s}s"
                         if workout.ftp is not None:
-                            power = zone_to_power(zone)
+                            power = workout._zone_to_power(zone)
                             if power is not None:
                                 workout.add_block("steady", zone=zone.upper(), duration=duration, power=power)
                                 display_timeline()
@@ -450,7 +404,7 @@ def repl():
                 if "zone" in kwargs:
                     update_auto_powers()
                 elif "power" in kwargs and workout.ftp is not None:
-                    workout.blocks[index]["zone"] = power_to_zone(workout.blocks[index]["power"])
+                    workout.blocks[index]["zone"] = workout._power_to_zone(workout.blocks[index]["power"])
 
                 display_timeline()
 

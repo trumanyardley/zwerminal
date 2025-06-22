@@ -215,3 +215,50 @@ class Workout:
             "AUTO": "white"
         }
         return color_map.get(str(zone).upper(), "white")
+
+    
+    def _power_to_zone(self, power):
+        """Convert power to zone"""
+        if self.ftp is None or self.ftp <= 0:
+            return "Z?"
+        
+        try:
+            power = float(power)
+            if power < 0:
+                return "Z?"
+            pct = (power / self.ftp) * 100
+            if pct < 60:
+                return "Z1"
+            elif pct < 76:
+                return "Z2"
+            elif pct < 90:
+                return "Z3"
+            elif pct < 105:
+                return "Z4"
+            elif pct < 119:
+                return "Z5"
+            else:
+                return "Z6"
+        except (ValueError, TypeError):
+            return "Z?"
+
+
+
+
+    def _zone_to_power(self, zone):
+        """Convert zone to power"""
+        if self.ftp is None or self.ftp <= 0:
+            return None
+            
+        try:
+            zperc = {
+                "Z1": 0.55,
+                "Z2": 0.65,
+                "Z3": 0.80,
+                "Z4": 0.95,
+                "Z5": 1.10,
+                "Z6": 1.25
+            }.get(zone.upper(), None)
+            return int(self.ftp * zperc) if zperc is not None else None
+        except (ValueError, TypeError):
+            return None
