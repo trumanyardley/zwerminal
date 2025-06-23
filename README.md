@@ -1,4 +1,5 @@
 # Zwerminal CLI 🌀
+![demo-vid](https://github.com/user-attachments/assets/2540a00e-abe9-402a-9f51-df3c7d92324e)
 
 A powerful command-line interface for creating custom Zwift workouts with an intuitive terminal experience. Build structured training sessions with zones, intervals, ramps, and export them directly to `.zwo` format for use in Zwift.
 
