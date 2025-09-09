@@ -147,21 +147,32 @@ def parse_duration_to_seconds(duration_str):
         console.print(f"[red]Invalid duration format: '{duration_str}'. Using 0 seconds.[/]")
         return 0
 
-def update_auto_powers():
+def update_auto_powers(ftp_changed=False):
     """Update auto powers"""
     if not workout.ftp:
+        return
+    if not ftp_changed:
         return
         
     for b in workout.blocks:
         try:
-            zone = b.get('zone', '')
-            if zone in ["Z1", "Z2", "Z3", "Z4", "Z5", "Z6"] and workout.ftp is not None:
+            if b.get("type") != "steady":
+                continue
+
+            zone = b.get("zone", "")
+            mode = b.get("power_mode", "custom")
+
+            # Keep zone-synced blocks in sync with FTP
+            if mode == "zone" and zone in ["Z1","Z2","Z3","Z4","Z5","Z6"]:
                 new_power = workout._zone_to_power(zone)
                 if new_power is not None:
-                    b['power'] = new_power
-            elif zone == "AUTO" and workout.ftp is not None:
-                power = b.get('power', 0)
-                b['zone'] = workout._power_to_zone(power)
+                    b["power"] = new_power
+
+            # For custom blocks, if zone is AUTO and we have FTP, set the label once
+            if mode == "custom" and zone == "AUTO":
+                power = b.get("power", 0)
+                b["zone"] = workout._power_to_zone(power)
+
         except Exception as e:
             console.print(f"[red]Error updating power for block: {e}[/]")
 
@@ -283,7 +294,7 @@ def repl():
                 if ftp_value is None:
                     continue 
                 workout.ftp = ftp_value
-                update_auto_powers()
+                update_auto_powers(ftp_changed=True)
                 console.print(f"✅ FTP set to [bold]{workout.ftp}W[/]")
 
             elif command == "add" and args:
@@ -341,7 +352,7 @@ def repl():
                         if workout.ftp is not None:
                             power = workout._zone_to_power(zone)
                             if power is not None:
-                                workout.add_block("steady", zone=zone.upper(), duration=duration, power=power)
+                                workout.add_block("steady", zone=zone.upper(), duration=duration, power=power, power_mode="zone")
                                 refresh_screen()
                             else:
                                 console.print("[red]Could not calculate power for zone.[/]")

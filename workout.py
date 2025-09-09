@@ -28,6 +28,8 @@ class Workout:
                 blk["zone"] = str(params.get("zone", "Z1")).upper()
                 blk["duration"] = str(params.get("duration", "0s"))
                 blk["power"] = int(params.get("power", 0))
+                blk["power_mode"] = params.get("power_mode", "custom")
+
                 
             elif block_type in ("warmup", "cooldown"):
                 blk["power_start"] = int(params.get("power_start", 0))
